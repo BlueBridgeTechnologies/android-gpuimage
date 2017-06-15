@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
 
+import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
 import jp.co.cyberagent.android.gpuimage.videosupport.VideoSourceRenderer;
 
 /**
@@ -170,6 +171,10 @@ public class GPUImage {
                 break;
         }
         mRenderer.setRotationCamera(rotation, flipHorizontal, flipVertical);
+    }
+
+    public void setUpCameraFrameCallback(CameraFrameReceivedCallback cameraFrameCallback){
+        mRenderer.cameraFrameReceivedCallback = cameraFrameCallback;
     }
 
     @TargetApi(11)
