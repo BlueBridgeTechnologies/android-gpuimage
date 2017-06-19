@@ -173,8 +173,12 @@ public class GPUImage {
         mRenderer.setRotationCamera(rotation, flipHorizontal, flipVertical);
     }
 
-    public void setUpCameraFrameCallback(CameraFrameReceivedCallback cameraFrameCallback){
+    public void setUpCameraFrameReceivedCallback(CameraFrameReceivedCallback cameraFrameCallback){
         mRenderer.cameraFrameReceivedCallback = cameraFrameCallback;
+    }
+
+    public void removeCameraFrameReceivedCallback(){
+        mRenderer.cameraFrameReceivedCallback = null;
     }
 
     @TargetApi(11)
