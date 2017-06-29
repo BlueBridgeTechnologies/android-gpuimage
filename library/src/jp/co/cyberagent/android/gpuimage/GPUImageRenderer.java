@@ -27,6 +27,7 @@ import android.opengl.GLES30;
 import android.opengl.GLSurfaceView.Renderer;
 
 import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
+import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
 import jp.co.cyberagent.android.gpuimage.videosupport.VideoFrameCallback;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -55,6 +56,8 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
     private GPUImageFilter mFilter;
 
     public final Object mSurfaceChangedWaiter = new Object();
+
+    public CameraFrameReceivedCallback cameraFrameReceivedCallback;
 
     private int mGLTextureId = NO_IMAGE;
     private SurfaceTexture mSurfaceTexture = null;
@@ -149,7 +152,13 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
 
     @Override
     public void onPreviewFrame(final byte[] data, final Camera camera) {
+
         final Size previewSize = camera.getParameters().getPreviewSize();
+
+        if(cameraFrameReceivedCallback != null){
+            cameraFrameReceivedCallback.onCameraPreview(data,previewSize.width, previewSize.height);
+        }
+
         if (mGLRgbBuffer == null) {
             mGLRgbBuffer = IntBuffer.allocate(previewSize.width * previewSize.height);
         }
