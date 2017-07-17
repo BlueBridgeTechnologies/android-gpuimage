@@ -263,7 +263,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
         if (bitmap == null) {
             return;
         }
-
+        mSurfaceTexture.updateTexImage();
         runOnDrawEnd(new Runnable() {
 
             @Override
