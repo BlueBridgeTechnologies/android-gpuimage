@@ -25,6 +25,7 @@ import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView.Renderer;
+import android.util.Log;
 
 import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
 import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
@@ -263,7 +264,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
             return;
         }
 
-        runOnDraw(new Runnable() {
+        runOnDrawEnd(new Runnable() {
 
             @Override
             public void run() {
