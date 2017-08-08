@@ -78,8 +78,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     private float mBackgroundGreen = 0;
     private float mBackgroundBlue = 0;
 
-    private Camera mCamera;
-    private Size mCameraPreviewSize;
+    private Size mPreloadedPreviewSize;
 
     public GPUImageRenderer(final GPUImageFilter filter) {
         mFilter = filter;
@@ -151,30 +150,36 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
 
     @Override
     public void onPreviewFrame(final byte[] data, final Camera camera) {
-        if(mCamera != camera){
-            mCamera = camera;
-            mCameraPreviewSize = camera.getParameters().getPreviewSize();
-        }
+        final Size previewSize = mPreloadedPreviewSize != null ? mPreloadedPreviewSize : camera.getParameters().getPreviewSize();
         if (mGLRgbBuffer == null) {
-            mGLRgbBuffer = IntBuffer.allocate(mCameraPreviewSize.width * mCameraPreviewSize.height);
+            mGLRgbBuffer = IntBuffer.allocate(previewSize.width * previewSize.height);
         }
         if (mRunOnDraw.isEmpty()) {
             runOnDraw(new Runnable() {
                 @Override
                 public void run() {
-                    GPUImageNativeLibrary.YUVtoRBGA(data, mCameraPreviewSize.width, mCameraPreviewSize.height,
+                    GPUImageNativeLibrary.YUVtoRBGA(data, previewSize.width, previewSize.height,
                             mGLRgbBuffer.array());
-                    mGLTextureId = OpenGlUtils.loadTexture(mGLRgbBuffer, mCameraPreviewSize, mGLTextureId);
+                    mGLTextureId = OpenGlUtils.loadTexture(mGLRgbBuffer, previewSize, mGLTextureId);
                     camera.addCallbackBuffer(data);
 
-                    if (mImageWidth != mCameraPreviewSize.width) {
-                        mImageWidth = mCameraPreviewSize.width;
-                        mImageHeight = mCameraPreviewSize.height;
+                    if (mImageWidth != previewSize.width) {
+                        mImageWidth = previewSize.width;
+                        mImageHeight = previewSize.height;
                         adjustImageScaling();
                     }
                 }
             });
         }
+    }
+
+    /**
+     * Calling this method is not necessary, but due to the high cost of calling `camera.getParameters().getPreviewSize()`
+     * you can call it with the previewSize you will provide to improve performance.
+     * @param previewSize
+     */
+    public void setPreviewSize(Size previewSize){
+        this.mPreloadedPreviewSize = previewSize;
     }
 
     public void setUpSurfaceTexture(final Camera camera) {
