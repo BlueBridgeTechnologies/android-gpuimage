@@ -39,6 +39,9 @@ import android.provider.MediaStore;
 import android.view.Display;
 import android.view.WindowManager;
 
+import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
+import jp.co.cyberagent.android.gpuimage.videosupport.VideoSourceRenderer;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -46,9 +49,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
-
-import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
-import jp.co.cyberagent.android.gpuimage.videosupport.VideoSourceRenderer;
 
 /**
  * The main accessor for GPUImage functionality. This class helps to do common
@@ -170,6 +170,7 @@ public class GPUImage {
                 rotation = Rotation.ROTATION_270;
                 break;
         }
+        mRenderer.setPreviewSize(camera.getParameters().getPreviewSize());
         mRenderer.setRotationCamera(rotation, flipHorizontal, flipVertical);
     }
 
