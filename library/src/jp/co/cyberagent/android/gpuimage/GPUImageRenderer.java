@@ -30,8 +30,6 @@ import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
 import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
 import jp.co.cyberagent.android.gpuimage.videosupport.VideoFrameCallback;
 
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -39,6 +37,9 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
 import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
 
@@ -81,6 +82,8 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
     private float mBackgroundRed = 0;
     private float mBackgroundGreen = 0;
     private float mBackgroundBlue = 0;
+
+    private Size mPreloadedPreviewSize;
 
     public GPUImageRenderer(final GPUImageFilter filter) {
         mFilter = filter;
@@ -152,13 +155,10 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
 
     @Override
     public void onPreviewFrame(final byte[] data, final Camera camera) {
-
-        final Size previewSize = camera.getParameters().getPreviewSize();
-
+        final Size previewSize = mPreloadedPreviewSize != null ? mPreloadedPreviewSize : camera.getParameters().getPreviewSize();
         if(cameraFrameReceivedCallback != null){
             cameraFrameReceivedCallback.onCameraPreview(data,previewSize.width, previewSize.height);
         }
-
         if (mGLRgbBuffer == null) {
             mGLRgbBuffer = IntBuffer.allocate(previewSize.width * previewSize.height);
         }
@@ -181,6 +181,14 @@ public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCa
         }
     }
 
+    /**
+     * Calling this method is not necessary, but due to the high cost of calling `camera.getParameters().getPreviewSize()`
+     * you can call it with the previewSize you will provide to improve performance.
+     * @param previewSize
+     */
+    public void setPreviewSize(Size previewSize) {
+        this.mPreloadedPreviewSize = previewSize;
+    }
 
     @Override
     public void onVideoFrame(final byte[] data, final int width, final int height) {
