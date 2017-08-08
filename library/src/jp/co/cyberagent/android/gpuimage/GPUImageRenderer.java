@@ -23,10 +23,12 @@ import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView.Renderer;
 
 import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
+import jp.co.cyberagent.android.gpuimage.videosupport.CameraFrameReceivedCallback;
+import jp.co.cyberagent.android.gpuimage.videosupport.VideoFrameCallback;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,7 +44,8 @@ import javax.microedition.khronos.opengles.GL10;
 import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
 
 @TargetApi(11)
-public class GPUImageRenderer implements Renderer, PreviewCallback {
+public class GPUImageRenderer implements Renderer, PreviewCallback, VideoFrameCallback
+{
     public static final int NO_IMAGE = -1;
     static final float CUBE[] = {
             -1.0f, -1.0f,
@@ -54,6 +57,8 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     private GPUImageFilter mFilter;
 
     public final Object mSurfaceChangedWaiter = new Object();
+
+    public CameraFrameReceivedCallback cameraFrameReceivedCallback;
 
     private int mGLTextureId = NO_IMAGE;
     private SurfaceTexture mSurfaceTexture = null;
@@ -98,8 +103,8 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
 
     @Override
     public void onSurfaceCreated(final GL10 unused, final EGLConfig config) {
-        GLES20.glClearColor(mBackgroundRed, mBackgroundGreen, mBackgroundBlue, 1);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glClearColor(mBackgroundRed, mBackgroundGreen, mBackgroundBlue, 1);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         mFilter.init();
     }
 
@@ -107,8 +112,8 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     public void onSurfaceChanged(final GL10 gl, final int width, final int height) {
         mOutputWidth = width;
         mOutputHeight = height;
-        GLES20.glViewport(0, 0, width, height);
-        GLES20.glUseProgram(mFilter.getProgram());
+        GLES30.glViewport(0, 0, width, height);
+        GLES30.glUseProgram(mFilter.getProgram());
         mFilter.onOutputSizeChanged(width, height);
         adjustImageScaling();
         synchronized (mSurfaceChangedWaiter) {
@@ -118,7 +123,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
 
     @Override
     public void onDrawFrame(final GL10 gl) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
         runAll(mRunOnDraw);
         mFilter.onDraw(mGLTextureId, mGLCubeBuffer, mGLTextureBuffer);
         runAll(mRunOnDrawEnd);
@@ -151,6 +156,9 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
     @Override
     public void onPreviewFrame(final byte[] data, final Camera camera) {
         final Size previewSize = mPreloadedPreviewSize != null ? mPreloadedPreviewSize : camera.getParameters().getPreviewSize();
+        if(cameraFrameReceivedCallback != null){
+            cameraFrameReceivedCallback.onCameraPreview(data,previewSize.width, previewSize.height);
+        }
         if (mGLRgbBuffer == null) {
             mGLRgbBuffer = IntBuffer.allocate(previewSize.width * previewSize.height);
         }
@@ -178,8 +186,32 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
      * you can call it with the previewSize you will provide to improve performance.
      * @param previewSize
      */
-    public void setPreviewSize(Size previewSize){
+    public void setPreviewSize(Size previewSize) {
         this.mPreloadedPreviewSize = previewSize;
+    }
+
+    @Override
+    public void onVideoFrame(final byte[] data, final int width, final int height) {
+
+        if (mGLRgbBuffer == null) {
+            mGLRgbBuffer = IntBuffer.allocate(width * height);
+        }
+        if (mRunOnDraw.isEmpty()) {
+            runOnDraw(new Runnable() {
+                @Override
+                public void run() {
+                    GPUImageNativeLibrary.YUVtoRBGA(data, width, height,
+                            mGLRgbBuffer.array());
+                    mGLTextureId = OpenGlUtils.loadTexture(mGLRgbBuffer, width, height, mGLTextureId);
+
+                    if (mImageWidth != width) {
+                        mImageWidth = width;
+                        mImageHeight = height;
+                        adjustImageScaling();
+                    }
+                }
+            });
+        }
     }
 
     public void setUpSurfaceTexture(final Camera camera) {
@@ -187,7 +219,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
             @Override
             public void run() {
                 int[] textures = new int[1];
-                GLES20.glGenTextures(1, textures, 0);
+                GLES30.glGenTextures(1, textures, 0);
                 mSurfaceTexture = new SurfaceTexture(textures[0]);
                 try {
                     camera.setPreviewTexture(mSurfaceTexture);
@@ -211,7 +243,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
                     oldFilter.destroy();
                 }
                 mFilter.init();
-                GLES20.glUseProgram(mFilter.getProgram());
+                GLES30.glUseProgram(mFilter.getProgram());
                 mFilter.onOutputSizeChanged(mOutputWidth, mOutputHeight);
             }
         });
@@ -222,7 +254,7 @@ public class GPUImageRenderer implements Renderer, PreviewCallback {
 
             @Override
             public void run() {
-                GLES20.glDeleteTextures(1, new int[]{
+                GLES30.glDeleteTextures(1, new int[]{
                         mGLTextureId
                 }, 0);
                 mGLTextureId = NO_IMAGE;
